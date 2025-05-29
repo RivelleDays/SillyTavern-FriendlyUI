@@ -1,0 +1,18 @@
+{
+    "display_name": "FriendlyUI",
+    "description": "(WIP) A simple UI enhancement for SillyTavern—reorganized layout, cleaner looks, probably messes up all your muscle memory. Hopefully worth it.",
+    "loading_order": 10,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "Rivelle <rivelle.days@gmail.com>",
+    "version": "0.0.1",
+    "license": "AGPL-3.0",
+    "homepage": "https://github.com/RivelleDays/SillyTavern-FriendlyUI",
+    "auto_update": true,
+    "i18n": {
+        "zh-tw": "i18n/zh-tw.json",
+        "zh-cn": "i18n/zh-cn.json"
+    }
+}
