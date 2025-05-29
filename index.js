@@ -5,7 +5,7 @@
 // Global settings and constants
 const EXTENSION_NAME = 'FriendlyUI';
 const settingsKey = 'SillyTavernFriendlyUI';
-const VERSION = "1.0.0";
+const VERSION = "0.0.1";
 
 // Import required functions
 import { t } from '../../../i18n.js';
@@ -195,16 +195,29 @@ function renderExtensionSettings() {
  */
 function addVersionInfo(container) {
     const versionContainer = document.createElement('div');
+    versionContainer.className = 'flex-container flexFlowColumn';
     versionContainer.style.marginTop = '0.5em';
-    versionContainer.style.marginBottom = '1em';
+    versionContainer.style.marginBottom = '0.5em';
     versionContainer.style.textAlign = 'center';
-    versionContainer.style.fontSize = '0.8em';
-    versionContainer.style.opacity = '0.6';
 
-    versionContainer.innerHTML = `
-        <span data-i18n="FriendlyUI Version">FriendlyUI Version</span> ${VERSION}
-    `;
+    const smallElement = document.createElement('small');
+    smallElement.className = 'flex-container justifyCenter alignitemscenter';
 
+    const spanElement = document.createElement('span');
+    spanElement.setAttribute('data-i18n', 'FriendlyUI Version');
+    spanElement.textContent = 'FriendlyUI Version';
+
+    const linkElement = document.createElement('a');
+    linkElement.id = 'friendlyui-version';
+    linkElement.href = 'https://github.com/RivelleDays/SillyTavern-FriendlyUI';
+    linkElement.target = '_blank';
+    linkElement.rel = 'noopener noreferrer';
+    linkElement.style.marginLeft = '5px';
+    linkElement.textContent = VERSION;
+
+    smallElement.appendChild(spanElement);
+    smallElement.appendChild(linkElement);
+    versionContainer.appendChild(smallElement);
     container.appendChild(versionContainer);
 }
 
