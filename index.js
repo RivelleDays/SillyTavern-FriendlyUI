@@ -5,24 +5,27 @@
 // Global settings and constants
 const EXTENSION_NAME = 'FriendlyUI';
 const settingsKey = 'SillyTavernFriendlyUI';
-const VERSION = "0.0.1";
+const VERSION = "0.0.5";
 
 // Import required functions
 import { t } from '../../../i18n.js';
 
 // Import components
 import { OpenAITabManager } from './components/openai-tab-manager.js';
+import { UserSettingsTabManager } from './components/user-settings-tab-manager.js';
 
 /**
  * Default settings configuration
  */
 const defaultSettings = {
     enabled: true,
-    openaiTabsEnabled: true
+    openaiTabsEnabled: true,
+    userSettingsTabsEnabled: true
 };
 
-// Global tab manager instance
+// Global tab manager instances
 let openAITabManager = null;
+let userSettingsTabManager = null;
 
 /**
  * Main extension initialization function
@@ -61,8 +64,9 @@ function initExtensionUI() {
     // Render extension settings
     renderExtensionSettings();
 
-    // Initialize OpenAI tab manager
+    // Initialize tab managers
     initializeOpenAITabs();
+    initializeUserSettingsTabs();
 }
 
 /**
@@ -78,6 +82,21 @@ function initializeOpenAITabs() {
 
     // Set enabled state based on settings
     openAITabManager.setEnabled(settings.enabled && settings.openaiTabsEnabled);
+}
+
+/**
+ * Initialize User Settings tab management
+ */
+function initializeUserSettingsTabs() {
+    const context = SillyTavern.getContext();
+    const settings = context.extensionSettings[settingsKey];
+
+    if (!userSettingsTabManager) {
+        userSettingsTabManager = new UserSettingsTabManager();
+    }
+
+    // Set enabled state based on settings
+    userSettingsTabManager.setEnabled(settings.enabled && settings.userSettingsTabsEnabled);
 }
 
 /**
@@ -137,9 +156,12 @@ function renderExtensionSettings() {
     enabledCheckbox.addEventListener('change', () => {
         settings.enabled = enabledCheckbox.checked;
 
-        // Update OpenAI tabs based on main enabled state
+        // Update tab managers based on main enabled state
         if (openAITabManager) {
             openAITabManager.setEnabled(settings.enabled && settings.openaiTabsEnabled);
+        }
+        if (userSettingsTabManager) {
+            userSettingsTabManager.setEnabled(settings.enabled && settings.userSettingsTabsEnabled);
         }
 
         context.saveSettingsDebounced();
@@ -177,6 +199,33 @@ function renderExtensionSettings() {
 
     openaiTabsLabel.append(openaiTabsCheckbox, openaiTabsText);
     inlineDrawerContent.append(openaiTabsLabel);
+
+    // Create User Settings tabs toggle
+    const userSettingsTabsLabel = document.createElement('label');
+    userSettingsTabsLabel.classList.add('checkbox_label');
+    userSettingsTabsLabel.htmlFor = `${settingsKey}-user-settings-tabs`;
+
+    const userSettingsTabsCheckbox = document.createElement('input');
+    userSettingsTabsCheckbox.id = `${settingsKey}-user-settings-tabs`;
+    userSettingsTabsCheckbox.type = 'checkbox';
+    userSettingsTabsCheckbox.checked = settings.userSettingsTabsEnabled;
+
+    userSettingsTabsCheckbox.addEventListener('change', () => {
+        settings.userSettingsTabsEnabled = userSettingsTabsCheckbox.checked;
+
+        // Update User Settings tabs
+        if (userSettingsTabManager) {
+            userSettingsTabManager.setEnabled(settings.enabled && settings.userSettingsTabsEnabled);
+        }
+
+        context.saveSettingsDebounced();
+    });
+
+    const userSettingsTabsText = document.createElement('span');
+    userSettingsTabsText.textContent = t`Enable User Settings Organization Tabs (Theme/Character & Chat/Others)`;
+
+    userSettingsTabsLabel.append(userSettingsTabsCheckbox, userSettingsTabsText);
+    inlineDrawerContent.append(userSettingsTabsLabel);
 
     // Add version info
     addVersionInfo(inlineDrawerContent);
@@ -226,10 +275,23 @@ setTimeout(() => {
     if (openAITabManager) {
         openAITabManager.refreshTabs();
     }
+    if (userSettingsTabManager) {
+        userSettingsTabManager.refreshTabs();
+    }
 }, 1000);
 
 setTimeout(() => {
     if (openAITabManager) {
         openAITabManager.refreshTabs();
     }
+    if (userSettingsTabManager) {
+        userSettingsTabManager.refreshTabs();
+    }
 }, 3000);
+
+// Export for debugging purposes
+window.FriendlyUI = {
+    openAITabManager,
+    userSettingsTabManager,
+    VERSION
+};
