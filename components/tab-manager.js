@@ -7,6 +7,8 @@ export class TabManager {
         this.config = {
             containerSelector: config.containerSelector,
             insertAfterSelector: config.insertAfterSelector,
+            insertBeforeSelector: config.insertBeforeSelector, // New option
+            useContainerForContent: config.useContainerForContent || false, // New option
             tabPrefix: config.tabPrefix || 'tab',
             activeTabStorageKey: config.activeTabStorageKey,
             defaultTab: config.defaultTab || Object.keys(config.tabs)[0],
@@ -26,20 +28,59 @@ export class TabManager {
 
     init() {
         setTimeout(() => this.checkConditionAndInitialize(), 300);
-        setInterval(() => this.checkConditionAndInitialize(), 2000);
+        this.intervalId = setInterval(() => this.checkConditionAndInitialize(), 2000);
     }
 
     setEnabled(enabled) {
         this.enabled = enabled;
-        if (!enabled && this.isTabsCreated) {
-            this.removeTabs();
-        } else if (enabled) {
+        if (!enabled) {
+            // Clear interval to prevent re-creation
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
+
+            // Force remove tabs immediately when disabled
+            if (this.isTabsCreated) {
+                this.removeTabs();
+            }
+
+            // Double-check removal after a short delay
+            setTimeout(() => {
+                if (!this.enabled) {
+                    this.forceRemoveAllTabElements();
+                }
+            }, 100);
+        } else if (enabled && !this.intervalId) {
+            // Re-enable interval checking when enabled
+            this.intervalId = setInterval(() => this.checkConditionAndInitialize(), 2000);
+            // Check immediately
             this.checkConditionAndInitialize();
         }
     }
 
+    // Force remove all tab-related elements by class name
+    forceRemoveAllTabElements() {
+        // Remove tab buttons container
+        const tabButtons = document.querySelectorAll(`.${this.config.className}-buttons`);
+        tabButtons.forEach(el => el.remove());
+
+        // Remove all tab content containers
+        const tabContents = document.querySelectorAll(`.${this.config.className}-content`);
+        tabContents.forEach(el => el.remove());
+
+        this.tabButtonsContainer = null;
+        this.isTabsCreated = false;
+    }
+
     checkConditionAndInitialize() {
-        if (!this.enabled) return;
+        if (!this.enabled) {
+            // If disabled, ensure tabs are removed
+            if (this.isTabsCreated) {
+                this.removeTabs();
+            }
+            return;
+        }
 
         const shouldShowTabs = this.config.checkCondition();
 
@@ -51,8 +92,25 @@ export class TabManager {
     }
 
     createTabs() {
-        const insertAfterElement = document.querySelector(this.config.insertAfterSelector);
-        if (!insertAfterElement) return;
+        // Prevent duplicate creation
+        if (document.querySelector(`.${this.config.className}-buttons`)) {
+            this.isTabsCreated = true;
+            return;
+        }
+
+        // Determine where to insert tabs
+        let insertElement;
+        let insertMethod = 'afterend';
+
+        if (this.config.insertBeforeSelector) {
+            insertElement = document.querySelector(this.config.insertBeforeSelector);
+            insertMethod = 'beforebegin';
+        } else if (this.config.insertAfterSelector) {
+            insertElement = document.querySelector(this.config.insertAfterSelector);
+            insertMethod = 'afterend';
+        }
+
+        if (!insertElement) return;
 
         // Generate tab buttons HTML
         const tabButtonsHTML = Object.entries(this.config.tabs)
@@ -63,7 +121,7 @@ export class TabManager {
                 </button>
             `).join('');
 
-        insertAfterElement.insertAdjacentHTML('afterend', `
+        insertElement.insertAdjacentHTML(insertMethod, `
             <div class="${this.config.className}-buttons">
                 ${tabButtonsHTML}
             </div>
@@ -78,54 +136,136 @@ export class TabManager {
 
     organizeContent() {
         const tabButtons = this.tabButtonsContainer;
+        if (!tabButtons) return;
 
-        // Create tab containers
-        const tabContainersHTML = Object.keys(this.config.tabs)
-            .map((id, index) => `
-                <div id="${this.config.tabPrefix}-content-${id}" class="${this.config.className}-content ${index === 0 ? 'active' : ''}"></div>
-            `).join('');
+        if (this.config.useContainerForContent) {
+            // For user settings: create tab containers inside the existing container
+            const existingContainer = document.querySelector(this.config.containerSelector);
+            if (!existingContainer) return;
 
-        tabButtons.insertAdjacentHTML('afterend', tabContainersHTML);
+            // First, collect all elements that need to be moved BEFORE clearing the container
+            const elementsToMove = {};
+            Object.entries(this.config.tabs).forEach(([id, tab]) => {
+                elementsToMove[id] = [];
 
-        // Move content to respective tabs
-        Object.entries(this.config.tabs).forEach(([id, tab]) => {
-            const tabContainer = document.querySelector(`#${this.config.tabPrefix}-content-${id}`);
+                tab.contentSelectors.forEach(selector => {
+                    const elements = document.querySelectorAll(selector);
+                    elements.forEach(element => {
+                        // Find the wrapper (range-block or direct element)
+                        const wrapper = element.closest('.range-block') ||
+                                       element.closest('[name]') ||
+                                       element;
 
-            tab.contentSelectors.forEach(selector => {
-                const elements = document.querySelectorAll(selector);
-                elements.forEach(element => {
-                    // Find the wrapper (range-block or direct element)
-                    const wrapper = element.closest('.range-block') ||
-                                   element.closest('[name]') ||
-                                   element;
-
-                    if (wrapper && !tabContainer.contains(wrapper) && wrapper.parentNode) {
-                        tabContainer.appendChild(wrapper);
-                    }
+                        if (wrapper && wrapper.parentNode) {
+                            elementsToMove[id].push(wrapper);
+                        }
+                    });
                 });
             });
-        });
+
+            // Now create tab containers inside the existing container
+            const tabContainersHTML = Object.keys(this.config.tabs)
+                .map((id, index) => `
+                    <div id="${this.config.tabPrefix}-content-${id}" class="${this.config.className}-content ${index === 0 ? 'active' : ''}"></div>
+                `).join('');
+
+            existingContainer.innerHTML = tabContainersHTML;
+
+            // Move collected content to respective tabs
+            Object.entries(elementsToMove).forEach(([id, elements]) => {
+                const tabContainer = document.querySelector(`#${this.config.tabPrefix}-content-${id}`);
+                if (tabContainer) {
+                    elements.forEach(element => {
+                        if (element && element.parentNode) {
+                            tabContainer.appendChild(element);
+                        }
+                    });
+                }
+            });
+        } else {
+            // Original behavior: create tab containers after tab buttons
+            const tabContainersHTML = Object.keys(this.config.tabs)
+                .map((id, index) => `
+                    <div id="${this.config.tabPrefix}-content-${id}" class="${this.config.className}-content ${index === 0 ? 'active' : ''}"></div>
+                `).join('');
+
+            tabButtons.insertAdjacentHTML('afterend', tabContainersHTML);
+
+            // Move content to respective tabs
+            Object.entries(this.config.tabs).forEach(([id, tab]) => {
+                const tabContainer = document.querySelector(`#${this.config.tabPrefix}-content-${id}`);
+
+                tab.contentSelectors.forEach(selector => {
+                    const elements = document.querySelectorAll(selector);
+                    elements.forEach(element => {
+                        // Find the wrapper (range-block or direct element)
+                        const wrapper = element.closest('.range-block') ||
+                                       element.closest('[name]') ||
+                                       element;
+
+                        if (wrapper && !tabContainer.contains(wrapper) && wrapper.parentNode) {
+                            tabContainer.appendChild(wrapper);
+                        }
+                    });
+                });
+            });
+        }
     }
 
     removeTabs() {
+        // Remove tab buttons
         if (this.tabButtonsContainer) {
             this.tabButtonsContainer.remove();
             this.tabButtonsContainer = null;
         }
 
         const originalContainer = document.querySelector(this.config.containerSelector);
-        if (!originalContainer) return;
 
-        // Move all content back to original container
-        Object.keys(this.config.tabs).forEach(id => {
-            const tabContent = document.querySelector(`#${this.config.tabPrefix}-content-${id}`);
-            if (tabContent) {
-                while (tabContent.firstChild) {
-                    originalContainer.appendChild(tabContent.firstChild);
+        if (this.config.useContainerForContent && originalContainer) {
+            // For user settings: collect all content from tab containers and restore original structure
+            const allContent = [];
+
+            // Collect content from all tab containers
+            Object.keys(this.config.tabs).forEach(id => {
+                const tabContent = document.querySelector(`#${this.config.tabPrefix}-content-${id}`);
+                if (tabContent) {
+                    while (tabContent.firstChild) {
+                        allContent.push(tabContent.firstChild);
+                        tabContent.removeChild(tabContent.firstChild);
+                    }
                 }
-                tabContent.remove();
+            });
+
+            // Remove all tab containers
+            Object.keys(this.config.tabs).forEach(id => {
+                const tabContent = document.querySelector(`#${this.config.tabPrefix}-content-${id}`);
+                if (tabContent) {
+                    tabContent.remove();
+                }
+            });
+
+            // Clear the container and restore all content directly
+            originalContainer.innerHTML = '';
+            allContent.forEach(element => {
+                originalContainer.appendChild(element);
+            });
+        } else {
+            // Original behavior: move content back to original container
+            if (originalContainer) {
+                Object.keys(this.config.tabs).forEach(id => {
+                    const tabContent = document.querySelector(`#${this.config.tabPrefix}-content-${id}`);
+                    if (tabContent) {
+                        while (tabContent.firstChild) {
+                            originalContainer.appendChild(tabContent.firstChild);
+                        }
+                        tabContent.remove();
+                    }
+                });
             }
-        });
+        }
+
+        // Force remove any remaining tab elements
+        this.forceRemoveAllTabElements();
 
         this.isTabsCreated = false;
     }
@@ -204,6 +344,19 @@ export class TabManager {
     }
 
     refreshTabs() {
-        this.checkConditionAndInitialize();
+        if (this.enabled) {
+            this.checkConditionAndInitialize();
+        }
+    }
+
+    // Clean up method to stop all timers
+    destroy() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+        if (this.isTabsCreated) {
+            this.removeTabs();
+        }
     }
 }

@@ -9,11 +9,12 @@ export class UserSettingsTabManager {
     constructor() {
         this.tabManager = new TabManager({
             containerSelector: '#user-settings-block-content',
-            insertAfterSelector: '#user-settings-block-content',
+            insertBeforeSelector: '#user-settings-block-content', // Changed to insertBefore
             tabPrefix: 'user-settings-tab',
             activeTabStorageKey: 'user-settings-active-tab',
             defaultTab: 'theme',
             className: 'user-settings-tab',
+            useContainerForContent: true, // New flag to use container for content
             tabs: {
                 theme: {
                     label: 'UI Theme',
@@ -55,16 +56,25 @@ export class UserSettingsTabManager {
         });
 
         this.enabled = true;
+        this.resizeObserver = null;
         this.setupCustomizations();
     }
 
     setEnabled(enabled) {
         this.enabled = enabled;
         this.tabManager.setEnabled(enabled);
+
+        // Clean up resize observer when disabled
+        if (!enabled && this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
     }
 
     refreshTabs() {
-        this.tabManager.refreshTabs();
+        if (this.enabled) {
+            this.tabManager.refreshTabs();
+        }
     }
 
     handleTabSwitch(tabId) {
@@ -108,26 +118,29 @@ export class UserSettingsTabManager {
     }
 
     addTabSpecificStyles() {
-        // Add specific styles for user settings tabs if needed
-        const style = document.createElement('style');
-        style.textContent = `
-            .user-settings-tab-content h4 {
-                margin-top: 1em;
-                margin-bottom: 0.5em;
-                border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor) 20%, transparent);
-                padding-bottom: 0.5em;
-            }
-
-            .user-settings-tab-content h4:first-child {
-                margin-top: 0;
-            }
-        `;
-        document.head.appendChild(style);
+        // Add styles if needed for tab layout
+        const styleId = 'user-settings-tab-styles';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                .user-settings-tab-content {
+                    width: 100% !important;
+                }
+                .user-settings-tab-content.narrow-layout {
+                    /* Narrow layout specific styles */
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     setupResponsiveLayout() {
+        // Only set up if enabled
+        if (!this.enabled) return;
+
         // Ensure the tab content is responsive
-        const observer = new ResizeObserver(entries => {
+        this.resizeObserver = new ResizeObserver(entries => {
             entries.forEach(entry => {
                 if (entry.target.classList.contains('user-settings-tab-content')) {
                     // Handle responsive layout adjustments
@@ -137,8 +150,25 @@ export class UserSettingsTabManager {
         });
 
         // Observe all tab content containers
-        const tabContents = document.querySelectorAll('.user-settings-tab-content');
-        tabContents.forEach(content => observer.observe(content));
+        const checkAndObserve = () => {
+            if (!this.enabled || !this.resizeObserver) return;
+
+            const tabContents = document.querySelectorAll('.user-settings-tab-content');
+            tabContents.forEach(content => {
+                if (!content.hasAttribute('data-observed')) {
+                    this.resizeObserver.observe(content);
+                    content.setAttribute('data-observed', 'true');
+                }
+            });
+        };
+
+        // Initial check and periodic recheck
+        checkAndObserve();
+        this.observeInterval = setInterval(() => {
+            if (this.enabled) {
+                checkAndObserve();
+            }
+        }, 1000);
     }
 
     adjustLayoutForSize(width) {
@@ -152,7 +182,24 @@ export class UserSettingsTabManager {
             } else {
                 content.classList.remove('narrow-layout');
             }
+            // Ensure width is always 100%
+            content.style.width = '100%';
         });
+    }
+
+    // Clean up method
+    destroy() {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+        if (this.observeInterval) {
+            clearInterval(this.observeInterval);
+            this.observeInterval = null;
+        }
+        if (this.tabManager) {
+            this.tabManager.destroy();
+        }
     }
 
     // Backward compatibility methods

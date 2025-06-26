@@ -1,6 +1,10 @@
 {
     "Enable FriendlyUI": "啟用 FriendlyUI",
     "Enable Chat Completion Presets Settings Tabs": "啟用聊天完成預設分頁選單",
+    "Enable User Settings Organization Tabs": "啟用使用者設定分頁選單",
     "Parameters": "參數",
-    "Prompts": "提示詞"
+    "Prompts": "提示詞",
+    "UI Theme": "UI 主題",
+    "Character & Chat": "角色＆聊天",
+    "Others": "其他"
 }

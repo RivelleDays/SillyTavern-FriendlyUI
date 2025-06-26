@@ -100,6 +100,24 @@ function initializeUserSettingsTabs() {
 }
 
 /**
+ * Force update all tab managers
+ */
+function forceUpdateTabManagers() {
+    const context = SillyTavern.getContext();
+    const settings = context.extensionSettings[settingsKey];
+
+    // Only refresh if actually enabled
+    setTimeout(() => {
+        if (openAITabManager && settings.enabled && settings.openaiTabsEnabled) {
+            openAITabManager.refreshTabs();
+        }
+        if (userSettingsTabManager && settings.enabled && settings.userSettingsTabsEnabled) {
+            userSettingsTabManager.refreshTabs();
+        }
+    }, 100);
+}
+
+/**
  * Render extension settings panel
  */
 function renderExtensionSettings() {
@@ -222,7 +240,7 @@ function renderExtensionSettings() {
     });
 
     const userSettingsTabsText = document.createElement('span');
-    userSettingsTabsText.textContent = t`Enable User Settings Organization Tabs (Theme/Character & Chat/Others)`;
+    userSettingsTabsText.textContent = t`Enable User Settings Organization Tabs`;
 
     userSettingsTabsLabel.append(userSettingsTabsCheckbox, userSettingsTabsText);
     inlineDrawerContent.append(userSettingsTabsLabel);

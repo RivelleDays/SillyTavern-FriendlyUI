@@ -23,6 +23,7 @@
     display: block;
     margin-top: 0.8em;
     margin-bottom: 0.8em;
+    width: 100%;
 }
 
 /* Base Tab Buttons */
@@ -52,7 +53,7 @@
     justify-content: center;
     gap: 6px;
     margin: 2px;
-    padding: 8px 12px;
+    padding: 6px 8px;
     background: transparent;
     border: none;
     border-radius: 6px;
@@ -100,10 +101,8 @@ body:has(.openai-tab-buttons) {
 /* -- User Settings Specific Styles -- */
 
 .user-settings-tab-buttons {
-    margin-bottom: 0.8em;
     margin-top: 0.5em;
-    max-width: 100%;
-    width: fit-content;
+    width: 100%;
     margin-left: auto;
     margin-right: auto;
 }
@@ -127,33 +126,6 @@ body:has(.openai-tab-buttons) {
 
 .user-settings-tab-content .inline-drawer {
     margin: 0.3em 0;
-}
-
-/* Responsive Design for User Settings Tabs */
-@media (max-width: 768px) {
-    .user-settings-tab-buttons {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        padding: 2px;
-    }
-
-    .user-settings-tab-buttons::-webkit-scrollbar {
-        display: none;
-    }
-
-    .user-settings-tab-button {
-        flex-shrink: 0;
-        min-width: fit-content;
-        padding: 6px 8px;
-        white-space: nowrap;
-    }
-
-    .user-settings-tab-button i {
-        font-size: 1em;
-        margin-right: 4px;
-    }
 }
 
 /* Narrow Layout Adjustments */
@@ -213,4 +185,37 @@ body:has(.user-settings-tab-buttons) #user-settings-block-content > [name] {
     border-radius: 4px;
     padding-left: 0.5em;
     margin-left: -0.5em;
+}
+
+#user-settings-tab-content-theme {
+    .flex-container.flexFlowColumn.flexNoGap hr {
+        display: none;
+    }
+
+    [name="themeElements"] {
+        margin-top: 0.5em;
+    }
+    [name="FontBlurChatWidthBlock"] {
+        margin-top: 0.8em;
+        margin-bottom: 1.2em;
+        border-bottom: 1px dotted color-mix(in srgb, var(--SmartThemeBodyColor) 25%, transparent);
+        padding-bottom: 1.5em;
+    }
+
+    #color-picker-block {
+        display: grid;
+        gap: 10px;
+    }
+    #color-picker-block {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 10px;
+
+        @media screen and (max-width: 1000px) {
+            grid-template-columns: 1fr;
+        }
+    }
+}
+#movingUIreset {
+    width: fit-content;
 }
